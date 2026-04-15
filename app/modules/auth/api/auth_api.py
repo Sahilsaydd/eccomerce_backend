@@ -18,14 +18,14 @@ def log_login_activity(email:str):
 
 
 @router.post("/register")
-async def register(data:RegisterRequest, BackgroundTasks: BackgroundTasks ,db:AsyncSession =Depends(get_db) ):
-    BackgroundTasks.add_task(send_welcome_email, data.email)  # 👈 Schedule welcome email
+async def register(data:RegisterRequest, background_tasks: BackgroundTasks ,db:AsyncSession =Depends(get_db) ):
+    background_tasks.add_task(send_welcome_email, data.email)  # 👈 Schedule welcome email
     return await auth_service.register_user(db,data)
 
 
 
 @router.post("/login")
-async def login(BackgroundTasks: BackgroundTasks,
+async def login(background_tasks: BackgroundTasks,
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: AsyncSession = Depends(get_db)
 ):
@@ -36,7 +36,7 @@ async def login(BackgroundTasks: BackgroundTasks,
 
     token = await auth_service.login_user(db, data)
 
-    BackgroundTasks.add_task(log_login_activity,data.email)  # 👈 Schedule login activity log
+    background_tasks.add_task(log_login_activity, form_data.username)  # 👈 Schedule login activity log
 
     return {
         "access_token": token,

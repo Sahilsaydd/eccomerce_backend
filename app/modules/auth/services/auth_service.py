@@ -35,6 +35,7 @@ async def login_user(db:AsyncSession,data):
     token = create_access_token(
         {
             "sub":user.email,
+            "user_id": user.id,
             "role":user.role
         }
     )
