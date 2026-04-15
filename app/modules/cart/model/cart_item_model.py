@@ -10,3 +10,5 @@ class CartItem(Base):
     product_id = Column(Integer , ForeignKey("products.id"))
     quantity = Column(Integer , default=1)
     cart = relationship('Cart', back_populates="items")
+       # 🔥 ADD THIS
+    product = relationship("Product", back_populates="cart_items")

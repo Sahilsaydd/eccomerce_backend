@@ -1,15 +1,13 @@
 from sqlalchemy.future import select
-from sqlalchemy.ext.asyncio import AsyncSession
-from fastapi import HTTPException, status
-from sqlalchemy import text
-
+from sqlalchemy.orm import selectinload
+from fastapi import HTTPException
 from app.modules.cart.model.cart_model import Cart
 from app.modules.cart.model.cart_item_model import CartItem
 from app.modules.product.model.product_model import Product
 
 
 # ✅ Get or create cart
-async def get_or_create_cart(db: AsyncSession, user_id: int):
+async def get_or_create_cart(db, user_id):
     result = await db.execute(select(Cart).where(Cart.user_id == user_id))
     cart = result.scalars().first()
 
@@ -23,22 +21,17 @@ async def get_or_create_cart(db: AsyncSession, user_id: int):
 
 
 # ✅ Add to cart
-async def add_to_cart(db: AsyncSession, user_id: int, data):
-    
-    # 🔥 Check product exists
-    product_result = await db.execute(
-        select(Product).where(Product.id == data.product_id)
-    )
-    product = product_result.scalars().first()
-
-    if not product:
-        raise HTTPException(
-            status_code=404,
-            detail="Product not found"
-        )
-
+async def add_to_cart(db, user_id, data):
     cart = await get_or_create_cart(db, user_id)
 
+    # check product exists
+    result = await db.execute(select(Product).where(Product.id == data.product_id))
+    product = result.scalars().first()
+
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    # check item exists
     result = await db.execute(
         select(CartItem).where(
             CartItem.cart_id == cart.id,
@@ -60,24 +53,40 @@ async def add_to_cart(db: AsyncSession, user_id: int, data):
     await db.commit()
     await db.refresh(item)
 
-    return {"message": "Item added to cart successfully"}
+    return {"message": "Item added to cart"}
 
 
-# ✅ Get cart items
-async def get_cart(db: AsyncSession, user_id: int):
+# ✅ Get cart with product details
+async def get_cart(db, user_id):
     cart = await get_or_create_cart(db, user_id)
 
     result = await db.execute(
-        select(CartItem).where(CartItem.cart_id == cart.id)
+        select(CartItem)
+        .options(selectinload(CartItem.product))  # 🔥 IMPORTANT
+        .where(CartItem.cart_id == cart.id)
     )
 
     items = result.scalars().all()
 
-    return items
+    # format response
+    response = []
+    for item in items:
+        response.append({
+            "id": item.id,
+            "quantity": item.quantity,
+            "product": {
+                "id": item.product.id,
+                "name": item.product.name,
+                "price": item.product.price,
+                "category": item.product.category
+            }
+        })
+
+    return response
 
 
 # ✅ Remove item
-async def remove_item(db: AsyncSession, user_id: int, product_id: int):
+async def remove_item(db, user_id, product_id):
     cart = await get_or_create_cart(db, user_id)
 
     result = await db.execute(
@@ -89,25 +98,21 @@ async def remove_item(db: AsyncSession, user_id: int, product_id: int):
     item = result.scalars().first()
 
     if not item:
-        raise HTTPException(
-            status_code=404,
-            detail="Item not found in cart"
-        )
+        raise HTTPException(status_code=404, detail="Item not found")
 
     await db.delete(item)
     await db.commit()
 
-    return {"message": "Item removed successfully"}
+    return {"message": "Item removed"}
 
 
 # ✅ Clear cart
-async def clear_cart(db: AsyncSession, user_id: int):
+async def clear_cart(db, user_id):
     cart = await get_or_create_cart(db, user_id)
 
     await db.execute(
-        text("DELETE FROM cart_items WHERE cart_id = :cart_id"),
-        {"cart_id": cart.id}
+        CartItem.__table__.delete().where(CartItem.cart_id == cart.id)
     )
     await db.commit()
 
-    return {"message": "Cart cleared successfully"}
+    return {"message": "Cart cleared"}
