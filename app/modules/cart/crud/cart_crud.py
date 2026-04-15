@@ -69,8 +69,12 @@ async def get_cart(db, user_id):
     items = result.scalars().all()
 
     # format response
+    total_price = 0
     response = []
+
     for item in items:
+        item_total = item.quantity * item.product.price
+        total_price +=item_total
         response.append({
             "id": item.id,
             "quantity": item.quantity,
@@ -78,9 +82,14 @@ async def get_cart(db, user_id):
                 "id": item.product.id,
                 "name": item.product.name,
                 "price": item.product.price,
-                "category": item.product.category
-            }
+                "category": item.product.category,
+                "Item_total":"{:.2f}".format(item_total)
+
+            },
         })
+    response.append({
+        "Total_price": "{:.2f}".format(total_price)
+    })
 
     return response
 
