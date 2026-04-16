@@ -6,7 +6,7 @@ from app.db.database import engine
 from app.db.database import Base
 from app.modules.product.api import product_api
 from app.modules.cart.api import cart_api
-
+from app.modules.order.api import order_api
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
@@ -21,3 +21,4 @@ app.include_router(auth_api.router)
 app.include_router(admin_api.router)
 app.include_router(product_api.router)
 app.include_router(cart_api.router)
+app.include_router(order_api.router)
