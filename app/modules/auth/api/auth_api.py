@@ -66,6 +66,7 @@ async def login(
         background_tasks.add_task(send_login_email, user)
 
     return {
+        "Massage": user.name + " "+"Logged in successfully",
         "access_token": token,
         "token_type": "bearer"
     }

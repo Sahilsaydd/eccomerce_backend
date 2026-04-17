@@ -1,3 +1,4 @@
+from sqlalchemy import update
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
 from fastapi import HTTPException, BackgroundTasks
@@ -10,40 +11,51 @@ from app.modules.user.model.user import User
 from app.utils.email import send_cart_email
 
 
-# ✅ Get or create cart
+#  Get or create cart
 async def get_or_create_cart(db, user_id):
     result = await db.execute(select(Cart).where(Cart.user_id == user_id))
     cart = result.scalars().first()
 
-    if not cart:
-        cart = Cart(user_id=user_id)
+    if  cart and not cart.is_active:
+        cart.is_active = True
+        #cart = Cart(user_id=user_id)
         db.add(cart)
         await db.commit()
         await db.refresh(cart)
-
+        return cart
+    if not cart:
+        cart = Cart(user_id=user_id, is_active=True)
+        db.add(cart)
+        await db.commit() 
+        await db.refresh(cart)
+        return cart
     return cart
 
+    
 
-# ✅ Add to cart (WITH EMAIL)
+
+
+#  Add to cart (WITH EMAIL)
 async def add_to_cart(db, user_id, data, background_tasks: BackgroundTasks):
     cart = await get_or_create_cart(db, user_id)
 
-    # 🔹 Get user (for email)
-    result = await db.execute(select(User).where(User.id == user_id))
+    # Get user (for email)
+    result = await db.execute(select(User).where(User.id == user_id ))
     user = result.scalars().first()
 
-    # 🔹 Check product exists
-    result = await db.execute(select(Product).where(Product.id == data.product_id))
+    # Check product exists
+    result = await db.execute(select(Product).where(Product.id == data.product_id ,Product.is_active == True))
     product = result.scalars().first()
 
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
 
-    # 🔹 Check if item already exists
+    # Check if item already exists
     result = await db.execute(
         select(CartItem).where(
             CartItem.cart_id == cart.id,
-            CartItem.product_id == data.product_id
+            CartItem.product_id == data.product_id,
+            CartItem.is_active == True   # ✅
         )
     )
     item = result.scalars().first()
@@ -61,21 +73,21 @@ async def add_to_cart(db, user_id, data, background_tasks: BackgroundTasks):
     await db.commit()
     await db.refresh(item)
 
-    # 📧 Send email in background
+    #  Send email in background
     if user:
         background_tasks.add_task(send_cart_email, user, product)
 
-    return {"message": "Item added to cart successfully"}
+    return {"message": "Item added to cart successfully","Product Name":product.name}
 
 
-# ✅ Get cart with product details
+#  Get cart with product details
 async def get_cart(db, user_id):
     cart = await get_or_create_cart(db, user_id)
 
     result = await db.execute(
         select(CartItem)
         .options(selectinload(CartItem.product))
-        .where(CartItem.cart_id == cart.id)
+        .where(CartItem.cart_id == cart.id ,CartItem.is_active == True)
     )
 
     items = result.scalars().all()
@@ -106,11 +118,11 @@ async def get_cart(db, user_id):
     return response
 
 
-# ✅ Remove item (WITH EMAIL)
+#  Remove item (WITH EMAIL)
 async def remove_item(db, user_id, product_id, background_tasks: BackgroundTasks):
     cart = await get_or_create_cart(db, user_id)
 
-    # 🔹 Get user
+    # Get user
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalars().first()
 
@@ -129,10 +141,10 @@ async def remove_item(db, user_id, product_id, background_tasks: BackgroundTasks
 
     product = item.product
 
-    await db.delete(item)
+    item.is_active = False
     await db.commit()
 
-    # 📧 Optional: send email
+    #  Optional: send email
     if user and product:
         background_tasks.add_task(
             send_cart_email,
@@ -140,23 +152,23 @@ async def remove_item(db, user_id, product_id, background_tasks: BackgroundTasks
             product
         )
 
-    return {"message": "Item removed from cart"}
+    return {"message": "Item removed from cart" ,"Item":item}
 
 
-# ✅ Clear cart (WITH EMAIL)
+#  Clear cart (WITH EMAIL)
 async def clear_cart(db, user_id, background_tasks: BackgroundTasks):
     cart = await get_or_create_cart(db, user_id)
 
-    # 🔹 Get user
+    # Get user
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalars().first()
 
     await db.execute(
-        CartItem.__table__.delete().where(CartItem.cart_id == cart.id)
+       update(CartItem).where(CartItem.cart_id ==cart.id).values(is_active =False)
     )
     await db.commit()
 
-    # 📧 Optional email
+    #  Optional email
     if user:
         background_tasks.add_task(
             send_cart_email,

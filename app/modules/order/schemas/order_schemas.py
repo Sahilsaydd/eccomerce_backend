@@ -1,10 +1,10 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 from  typing import List
 
 class OrderItemResponse(BaseModel):
-    product_id:int 
-    quantity:int
-    price:float
+    product_id:int = Field(gt=0)
+    quantity:int = Field(gt=0)
+    price:float = Field(gt=0)
 
 
 class OrderResponse(BaseModel):
@@ -14,6 +14,11 @@ class OrderResponse(BaseModel):
     item: list[OrderItemResponse]
 
 class OrderStatusUpdate(BaseModel):
-    status:str
-
+    status:str 
+    @field_validator("status")
+    def validate_status(cls, value):
+        allowed = ["pending", "shipped", "delivered", "cancelled"]
+        if value not in allowed:
+            raise ValueError(f"Status must be one of {allowed}")
+        return value
 

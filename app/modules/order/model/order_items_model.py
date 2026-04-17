@@ -1,7 +1,7 @@
 from sqlalchemy import Column , Integer ,String , Float , ForeignKey
 from app.db.database import Base
-
-class OrderItems(Base):
+from app.db.database import BaseModel
+class OrderItems(BaseModel):
     __tablename__ ="order_items"
     
     id = Column(Integer , primary_key=True , index=True)

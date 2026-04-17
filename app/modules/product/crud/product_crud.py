@@ -1,5 +1,5 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, text
+from sqlalchemy import select, text, update
 from fastapi import HTTPException
 from app.modules.product.model.product_model import Product
 
@@ -16,7 +16,7 @@ async def create_product(db:AsyncSession ,data):
 
 ## Get All Products
 async def get_products(db:AsyncSession):
-    result = await db.execute(select(Product))
+    result = await db.execute(select(Product).where(Product.is_active == True))
     return  result.scalars().all()
 
 
@@ -44,12 +44,15 @@ async def update_product(db:AsyncSession, product_id:int, data):
 
 # delete product
 
-async def delete_product(db:AsyncSession ,product_id:int):
-    product = await get_product_by_id(db,product_id)
+async def delete_product(db: AsyncSession, product_id: int):
+    product = await get_product_by_id(db, product_id)
 
-    await db.delete(product)
+    product.is_active = False   # ✅ soft delete
+
     await db.commit()
-    return {"message": "Product deleted successfully"}
+    await db.refresh(product)
+
+    return {"message": "Product deleted successfully (soft delete)" , "IsActive":product.is_active}
 
 
 # search products
@@ -67,11 +70,10 @@ async def search_products(db:AsyncSession, keyword:str = None, category:str = No
 
 # delete all products
 async def delete_all_products(db:AsyncSession):
-    await db.execute(text("DELETE FROM products"))
+    await db.execute(update(Product).values(is_active=False)) # ✅ soft delete all)
     await db.commit()
     return {"message": "All products deleted successfully"}
-    await db.commit()
-    return {"massage":"Product Deleted Successfully"}
+  
 
 
 #search
@@ -88,8 +90,8 @@ async def search_products(db:AsyncSession, keyword=None , category=None):
     return result.scalars().all()
 
 
-## Delete All Products (For Testing Only)
-async def delete_all_products(db:AsyncSession):
-    await db.execute(text("DELETE FROM products"))
-    await db.commit()
-    return {"message":"All Products Deleted Successfully"}
+# ## Delete All Products (For Testing Only)
+# async def delete_all_products(db:AsyncSession):
+#     await db.execute(text("DELETE FROM products"))
+#     await db.commit()
+#     return {"message":"All Products Deleted Successfully"}

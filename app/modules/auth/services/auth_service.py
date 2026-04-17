@@ -14,7 +14,7 @@ async def register_user(db:AsyncSession ,data):
         name = data.name,
         email =data.email,
         password = hash_password(data.password),
-        role = data.role
+        role = data.role.value
 
     )
 
@@ -34,8 +34,8 @@ async def login_user(db:AsyncSession,data):
     
     token = create_access_token(
         {
-            "sub": str(user.id),  # ✅ Use user.id as sub (string)
-            "email": user.email,  # ✅ Store email separately
+            "sub": str(user.id),  #  Use user.id as sub (string)
+            "email": user.email,  #  Store email separately
             "role": user.role
         }
     )

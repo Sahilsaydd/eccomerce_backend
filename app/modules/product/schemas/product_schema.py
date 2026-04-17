@@ -1,10 +1,10 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 class ProductCreate(BaseModel):
-    name:str
+    name:str =Field(min_length=1 ,max_length=100)
     description:str
-    price:float
-    category:str
+    price:float =Field(gt=0)
+    category:str =Field(min_length=1 ,max_length=50)
 
 class ProductUpdate(BaseModel):
     name:str | None =None

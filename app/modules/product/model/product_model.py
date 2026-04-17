@@ -1,8 +1,8 @@
 from sqlalchemy import Column, Integer, String, Float
 from sqlalchemy.orm import relationship   # 👈 ADD THIS
 from app.db.database import Base
-
-class Product(Base):
+from app.db.database import BaseModel
+class Product(BaseModel):
     __tablename__ = "products"
 
     id = Column(Integer, primary_key=True, index=True)
