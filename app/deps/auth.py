@@ -1,7 +1,7 @@
 from fastapi import Depends, HTTPException 
 from fastapi.security import OAuth2PasswordBearer
 from jose import jwt
-from app.core.config import settings   #  use instance not class
+from app.core.config import settings   
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
@@ -18,8 +18,8 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
         raise HTTPException(status_code=401, detail="Invalid Token")
 
 
-#  FIXED ROLE FUNCTION
-def require_role(allowed_roles: list):   #  REMOVE async here
+
+def require_role(allowed_roles: list):   
     async def checker(user=Depends(get_current_user)):
         if user.get("role") not in allowed_roles:
             raise HTTPException(

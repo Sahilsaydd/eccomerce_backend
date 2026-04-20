@@ -55,7 +55,7 @@ async def add_to_cart(db, user_id, data, background_tasks: BackgroundTasks):
         select(CartItem).where(
             CartItem.cart_id == cart.id,
             CartItem.product_id == data.product_id,
-            CartItem.is_active == True   # ✅
+            CartItem.is_active == True  
         )
     )
     item = result.scalars().first()

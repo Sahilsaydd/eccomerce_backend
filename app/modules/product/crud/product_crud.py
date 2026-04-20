@@ -104,7 +104,7 @@ async def update_product(db:AsyncSession, product_id:int, data):
 async def delete_product(db: AsyncSession, product_id: int):
     product = await get_product_by_id(db, product_id)
 
-    product.is_active = False   # ✅ soft delete
+    product.is_active = False   # 
 
     await db.commit()
     await db.refresh(product)
@@ -127,7 +127,7 @@ async def search_products(db:AsyncSession, keyword:str = None, category:str = No
 
 # delete all products
 async def delete_all_products(db:AsyncSession):
-    await db.execute(update(Product).values(is_active=False)) # ✅ soft delete all)
+    await db.execute(update(Product).values(is_active=False)) #  soft delete all)
     await db.commit()
     return {"message": "All products deleted successfully"}
   
