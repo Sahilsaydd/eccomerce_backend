@@ -1,7 +1,8 @@
 from fastapi import APIRouter ,Depends ,Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.deps.db import get_db
-from app.modules.product.schemas.product_schema import ProductCreate ,ProductResponse,ProductUpdate
+from app.deps.redis import get_redis
+from app.modules.product.schemas.product_schema import PaginatedProductResponse, ProductCreate ,ProductResponse,ProductUpdate
 from app.modules.product.crud import product_crud
 from app.deps.auth  import require_role
 
@@ -25,9 +26,13 @@ async def get_one(product_id:int , db:AsyncSession =Depends(get_db)):
 
 # Get All (Public)
 @router.get("/",response_model=list[ProductResponse])
-async def get_all(db:AsyncSession =Depends(get_db)):
-    return await product_crud.get_products(db)
+async def get_all(db:AsyncSession =Depends(get_db), redis=Depends(get_redis)):
+    return await product_crud.get_products(db, redis)
 
+#Get Paginated Products (Public)
+@router.get("/paginated/",response_model=PaginatedProductResponse)
+async def get_paginated(page:int = Query(1, ge=1), per_page:int = Query(10, ge=1), db:AsyncSession =Depends(get_db) ):
+    return await product_crud.get_products_paginated(db,page,per_page)
 
 # Create (Admin only)
 @router.post("/",response_model=ProductResponse)

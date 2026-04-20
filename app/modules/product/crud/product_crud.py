@@ -1,5 +1,7 @@
+import json
+
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, text, update
+from sqlalchemy import select, text, update ,func
 from fastapi import HTTPException
 from app.modules.product.model.product_model import Product
 
@@ -13,12 +15,67 @@ async def create_product(db:AsyncSession ,data):
     await db.refresh(new_product)
     return new_product
 
+async def get_products(db: AsyncSession, redis):
+    cache_key = "products:all"
 
-## Get All Products
-async def get_products(db:AsyncSession):
-    result = await db.execute(select(Product).where(Product.is_active == True))
-    return  result.scalars().all()
+    # 1. check cache sorted record in ascending order by id
+    cached_data = await redis.get(cache_key)
+     
 
+    if cached_data:
+        print("⚡ From Cache")
+        return json.loads(cached_data)
+
+    # 2. DB fallback
+    print("🐢 From DB")
+    result = await db.execute(
+        select(Product).where(Product.is_active == True)
+    )
+    products = result.scalars().all()
+
+    data = [
+
+        {
+            "id": p.id,
+            "name": p.name,
+            "price": p.price,
+            "description": p.description,
+            "category": p.category
+        }
+        for p in products
+    ]
+
+    data.sort(key=lambda x: x["id"])
+    # 3. store in redis
+    await redis.set(
+        cache_key,
+        json.dumps(data),
+        ex=120  # increase from 5 → 60
+    )
+
+    return data
+
+
+
+# Implement pagination instead of the skip use the page and count of the total products and the count of the products per page
+async def get_products_paginated(db:AsyncSession ,page:int =1 , per_page:int=10):
+    total_products = await db.execute(select(func.count()).select_from(Product).where(Product.is_active == True))
+    total_count = total_products.scalar()
+    total_pages = (total_count + per_page - 1) // per_page
+
+    if page < 1 or page > total_pages:
+        raise HTTPException(status_code=400, detail="The page is not exsit")
+
+    offset = (page - 1) * per_page
+    result = await db.execute(select(Product).where(Product.is_active == True).order_by(Product.id).offset(offset).limit(per_page))
+    products = result.scalars().all()
+
+    return {
+    "total_count": total_count,
+    "total_pages": total_pages,
+    "current_page": page,
+    "products": products
+}
 
 #Get By id
 async def get_product_by_id(db:AsyncSession,product_id:int):

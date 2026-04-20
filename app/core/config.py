@@ -2,6 +2,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
+    REDIS_URL: str
     DATABASE_URL: str
     SECRET_KEY: str
     ALGORITHM: str

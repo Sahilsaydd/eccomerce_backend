@@ -1,3 +1,5 @@
+from typing import List
+
 from pydantic import BaseModel, Field
 
 class ProductCreate(BaseModel):
@@ -7,10 +9,10 @@ class ProductCreate(BaseModel):
     category:str =Field(min_length=1 ,max_length=50)
 
 class ProductUpdate(BaseModel):
-    name:str | None =None
-    description:str | None =None
-    price:float | None =None
-    category:str | None =None
+    name:str =Field(default=None, min_length=1 ,max_length=100)
+    description:str =Field(default=None)
+    price:float =Field(default=None, gt=0)
+    category:str =Field(default=None, min_length=1 ,max_length=50)
 
 
 class ProductResponse(BaseModel):
@@ -22,3 +24,10 @@ class ProductResponse(BaseModel):
     
     class Config:
         from_attributes = True
+
+
+class PaginatedProductResponse(BaseModel):
+    total_count: int 
+    total_pages: int
+    current_page: int
+    products: List[ProductResponse]
