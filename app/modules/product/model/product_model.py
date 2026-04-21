@@ -10,6 +10,6 @@ class Product(BaseModel):
     description = Column(String)
     price = Column(Float, nullable=False)
     category = Column(String, nullable=False)
-
+    product_img = Column(String ,nullable=False)  # 🔥 ADD THIS (new column)
     # 🔥 ADD THIS (relationship)
     cart_items = relationship("CartItem", back_populates="product")

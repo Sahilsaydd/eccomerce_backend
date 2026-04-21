@@ -40,7 +40,8 @@ async def get_products(db: AsyncSession, redis):
             "name": p.name,
             "price": p.price,
             "description": p.description,
-            "category": p.category
+            "category": p.category,
+            "product_img": p.product_img  # 🔥 ADD THIS (include image URL in response)
         }
         for p in products
     ]
