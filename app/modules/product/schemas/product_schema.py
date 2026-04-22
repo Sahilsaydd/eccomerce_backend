@@ -7,14 +7,15 @@ class ProductCreate(BaseModel):
     description:str
     price:float =Field(gt=0)
     category:str =Field(min_length=1 ,max_length=50)
-    product_img:str = Field(default=None)  # 🔥 ADD THIS (new field for image URL)
+    product_img:str = Field(default=None) 
+    rating:float = Field(default=0.0, ge=0, le=5)  
 class ProductUpdate(BaseModel):
     name:str =Field(default=None, min_length=1 ,max_length=100)
     description:str =Field(default=None)
     price:float =Field(default=None, gt=0)
     category:str =Field(default=None, min_length=1 ,max_length=50)
-    product_img:str = Field(default=None)  # 🔥 ADD THIS (new field for image URL)
-
+    product_img:str = Field(default=None)  
+    rating:float = Field(default=None, ge=0, le=5)  
 
 class ProductResponse(BaseModel):
     id:int
@@ -22,7 +23,8 @@ class ProductResponse(BaseModel):
     description:str
     price:float
     category:str
-    product_img: Optional[str] = None   # 🔥 ADD THIS (alias for image URL)
+    product_img: Optional[str] = None   
+    rating: Optional[float] = 0.0
     class Config:
         from_attributes = True
 

@@ -41,6 +41,7 @@ async def get_products(db: AsyncSession, redis):
             "price": p.price,
             "description": p.description,
             "category": p.category,
+            "rating": p.rating,
             "product_img": p.product_img  # 🔥 ADD THIS (include image URL in response)
         }
         for p in products
@@ -51,7 +52,7 @@ async def get_products(db: AsyncSession, redis):
     await redis.set(
         cache_key,
         json.dumps(data),
-        ex=120  # increase from 5 → 60
+        ex=60  # increase from 5 → 60
     )
 
     return data
