@@ -2,7 +2,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from fastapi import HTTPException , status
 from app.modules.user.model.user import User
-from app.core.security import hash_password ,verify_password ,create_access_token
+from app.core.redis import redis_client
+
+from app.core.security import hash_password ,verify_password ,create_access_token,create_refresh_token
 
 async def register_user(db:AsyncSession ,data):
     result = await db.execute(select(User).where(User.email == data.email))
@@ -39,5 +41,18 @@ async def login_user(db:AsyncSession,data):
             "role": user.role
         }
     )
-    return token
+
+    refresh_token =create_refresh_token(
+        {
+
+        "sub": str(user.id)
+        }
+    )
+
+    await redis_client.set(
+        refresh_token,
+        user.email,
+        ex = 7 * 24*60*60
+    )
+    return {"access_token": token, "refresh_token": refresh_token}
 
