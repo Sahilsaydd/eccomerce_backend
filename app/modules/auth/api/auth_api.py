@@ -7,7 +7,7 @@ from app.modules.auth.schemas.auth_schema import LogoutRequest, RegisterRequest,
 from app.modules.auth.services import auth_service
 from app.deps.redis import get_redis, redis_client
 from sqlalchemy.future import select
-from app.utils.email import send_login_email , send_welcome_email
+from app.utils.email import send_login_email , send_welcome_email ,send_logout_email
 from app.modules.user.model.user import User
 from jose import jwt
 
@@ -65,7 +65,7 @@ async def login(
     if not user:
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
-    # Send email in background (NO await)
+    
     background_tasks.add_task(send_login_email, user)
 
     return {
@@ -76,29 +76,72 @@ async def login(
     }
 
 @router.post("/logout")
-async def logout(data: LogoutRequest):
+async def logout(
+    data: LogoutRequest,
+    background_tasks: BackgroundTasks,
+    db: AsyncSession = Depends(get_db)
+):
     try:
-        #  Decode token
+       
         payload = jwt.decode(
             data.refresh_token,
             settings.SECRET_KEY,
             algorithms=[settings.ALGORITHM]
         )
 
-        #  Check token type
+       
         if payload.get("type") != "refresh":
             raise HTTPException(status_code=401, detail="Invalid token type")
 
-        #  Check if token exists in Redis
+        
+        user_id = payload.get("sub")
+
+        result = await db.execute(select(User).where(User.id == int(user_id)))
+        user = result.scalars().first()
+
+       
         stored = await redis_client.get(data.refresh_token)
 
         if not stored:
-            raise HTTPException(status_code=401, detail="Token already expired")
+            raise HTTPException(status_code=401, detail="Token expired or already logged out")
 
-        #  Delete token → LOGOUT
         await redis_client.delete(data.refresh_token)
+
+        if user:
+            background_tasks.add_task(send_logout_email, user)
 
         return {"message": "Logged out successfully"}
 
-    except Exception:
+    except Exception as e:
         raise HTTPException(status_code=401, detail="Invalid token")
+
+    # try:
+
+       
+    #     data = LoginRequest(
+    #         email= form_data.username,
+    #         password= form_data.password
+    #     )
+    #     result = await db.execute(select(User).where(User.email == data.email))
+    #     user = result.scalars().first()
+    #     payload = jwt.decode(
+    #         data.refresh_token,
+    #         settings.SECRET_KEY,
+    #         algorithms=[settings.ALGORITHM]
+    #     )
+
+    #     if payload.get("type") != "refresh":
+    #         raise HTTPException(status_code=401, detail="Invalid token type")
+
+    #     stored = await redis_client.get(data.refresh_token)
+
+    #     if not stored:
+    #         raise HTTPException(status_code=401, detail="Token already expired")
+
+    #     await redis_client.delete(data.refresh_token)
+
+    #     background_task.add_task(send_logout_email, user)
+    #     return {"message": "Logged out successfully"}
+
+    # except Exception:
+    #     raise HTTPException(status_code=401, detail="Invalid token")

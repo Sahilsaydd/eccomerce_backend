@@ -69,6 +69,32 @@ Your Store Team
 """
     )
 
+async def send_logout_email(user):
+    await send_email(
+        user.email,
+        "🚪 Logout Alert",
+        f"""
+Hi {user.name},
+
+You have successfully logged out of your account.
+
+📅 Time: Just now  
+📧 Account: {user.email}
+
+If this was you, no action is needed.
+
+❗ If you did NOT log out:
+- Your account may be accessed from another device
+- Please log in and change your password immediately
+- Contact our support team
+
+Your security is our priority 🔒
+
+Stay safe,  
+Your Store Team
+"""
+    )
+
 async def send_cart_email(user, product):
     await send_email(
         user.email,

@@ -9,6 +9,10 @@ class ProductCreate(BaseModel):
     category:str =Field(min_length=1 ,max_length=50)
     product_img:str = Field(default=None) 
     rating:float = Field(default=0.0, ge=0, le=5)  
+    stock:int = Field(default=0, ge=0)
+    brand: Optional[str] = None
+    discount_percentage: Optional[int] = Field(default=0, ge=0, le=100)
+    product_images: Optional[List[str]] = None
 class ProductUpdate(BaseModel):
     name:str =Field(default=None, min_length=1 ,max_length=100)
     description:str =Field(default=None)
@@ -16,15 +20,26 @@ class ProductUpdate(BaseModel):
     category:str =Field(default=None, min_length=1 ,max_length=50)
     product_img:str = Field(default=None)  
     rating:float = Field(default=None, ge=0, le=5)  
+    stock:int = Field(default=0, ge=0)
+    brand: Optional[str] = None
+    discount_percentage: Optional[int] = Field(default=0, ge=0, le=100)
+    product_images: Optional[List[str]] = None
 
 class ProductResponse(BaseModel):
     id:int
     name:str
     description:str
+    final_price:float
+    you_saved: float
     price:float
     category:str
     product_img: Optional[str] = None   
     rating: Optional[float] = 0.0
+    stock: Optional[int] = 0
+    brand: Optional[str] = None
+    discount_percentage: Optional[int] = 0
+    product_images: Optional[List[str]] = None
+
     class Config:
         from_attributes = True
 
