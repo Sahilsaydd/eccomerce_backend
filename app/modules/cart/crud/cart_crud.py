@@ -3,6 +3,7 @@ from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
 from fastapi import HTTPException, BackgroundTasks
 
+from app.deps import db
 from app.modules.cart.model.cart_model import Cart
 from app.modules.cart.model.cart_item_model import CartItem
 from app.modules.product.model.product_model import Product
@@ -11,7 +12,6 @@ from app.modules.user.model.user import User
 from app.utils.email import send_cart_email
 
 
-#  Get or create cart
 async def get_or_create_cart(db, user_id):
     result = await db.execute(select(Cart).where(Cart.user_id == user_id))
     cart = result.scalars().first()
@@ -35,71 +35,82 @@ async def get_or_create_cart(db, user_id):
 
 
 
-#  Add to cart (WITH EMAIL)
 async def add_to_cart(db, user_id, data, background_tasks: BackgroundTasks):
     cart = await get_or_create_cart(db, user_id)
 
-    # Get user (for email)
-    result = await db.execute(select(User).where(User.id == user_id ))
-    user = result.scalars().first()
-
-    # Check product exists
-    result = await db.execute(select(Product).where(Product.id == data.product_id ,Product.is_active == True))
+    result = await db.execute(
+        select(Product).where(Product.id == data.product_id, Product.is_active == True)
+    )
     product = result.scalars().first()
 
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
 
-    # Check if item already exists
     result = await db.execute(
         select(CartItem).where(
             CartItem.cart_id == cart.id,
             CartItem.product_id == data.product_id,
-            CartItem.is_active == True  
+            CartItem.is_active == True   # ✅ only active
         )
-    )
+        )
     item = result.scalars().first()
 
     if item:
         item.quantity += data.quantity
-    else:
-        item = CartItem(
+
+        if item.quantity <= 0:
+            item.is_active = False
+
+        await db.commit()
+
+        if item.is_active:
+            await db.refresh(item)
+
+        return {"message": "Cart updated"}
+
+    if data.quantity > 0:
+        new_item = CartItem(
             cart_id=cart.id,
             product_id=data.product_id,
-            quantity=data.quantity
+            quantity=data.quantity,
+            is_active=True
         )
-        db.add(item)
+        db.add(new_item)
+        await db.commit()
+        await db.refresh(new_item)
 
-    await db.commit()
-    await db.refresh(item)
+        return {"message": "Item added to cart"}
 
-    #  Send email in background
-    if user:
-        background_tasks.add_task(send_cart_email, user, product)
-
-    return {"message": "Item added to cart successfully","Product Name":product.name}
+    return {"message": "No item to update"}
 
 
-#  Get cart with product details
 async def get_cart(db, user_id):
     cart = await get_or_create_cart(db, user_id)
 
     result = await db.execute(
         select(CartItem)
         .options(selectinload(CartItem.product))
-        .where(CartItem.cart_id == cart.id ,CartItem.is_active == True)
+        .where(
+            CartItem.cart_id == cart.id,
+            CartItem.is_active == True   # ✅ only active cart items
+        )
     )
 
     items = result.scalars().all()
 
     total_price = 0
-    response = []
+    response_items = []
 
     for item in items:
+
+        # ✅ IMPORTANT: Skip inactive products
+        if not item.product or item.product.is_active == False:
+            continue
+
         item_total = item.quantity * item.product.price
         total_price += item_total
 
-        response.append({
+        response_items.append({
             "id": item.id,
             "quantity": item.quantity,
             "product": {
@@ -107,31 +118,25 @@ async def get_cart(db, user_id):
                 "name": item.product.name,
                 "price": item.product.price,
                 "category": item.product.category,
-                "item_total": "{:.2f}".format(item_total)
+                "image": item.product.product_img,
+                "description": item.product.description,
             },
         })
 
-    response.append({
-        "total_price": "{:.2f}".format(total_price)
-    })
+    return {
+        "items": response_items,
+        "total_price": round(total_price, 2)
+    }
 
-    return response
-
-
-#  Remove item (WITH EMAIL)
 async def remove_item(db, user_id, product_id, background_tasks: BackgroundTasks):
     cart = await get_or_create_cart(db, user_id)
 
-    # Get user
-    result = await db.execute(select(User).where(User.id == user_id))
-    user = result.scalars().first()
-
     result = await db.execute(
         select(CartItem)
-        .options(selectinload(CartItem.product))
         .where(
             CartItem.cart_id == cart.id,
-            CartItem.product_id == product_id
+            CartItem.product_id == product_id,
+            CartItem.is_active == True   # ✅ only active item
         )
     )
     item = result.scalars().first()
@@ -139,27 +144,14 @@ async def remove_item(db, user_id, product_id, background_tasks: BackgroundTasks
     if not item:
         raise HTTPException(status_code=404, detail="Item not found")
 
-    product = item.product
-
     item.is_active = False
     await db.commit()
 
-    #  Optional: send email
-    if user and product:
-        background_tasks.add_task(
-            send_cart_email,
-            user,
-            product
-        )
+    return {"message": "Item removed from cart"}
 
-    return {"message": "Item removed from cart" ,"Item":item}
-
-
-#  Clear cart (WITH EMAIL)
 async def clear_cart(db, user_id, background_tasks: BackgroundTasks):
     cart = await get_or_create_cart(db, user_id)
 
-    # Get user
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalars().first()
 
@@ -168,12 +160,10 @@ async def clear_cart(db, user_id, background_tasks: BackgroundTasks):
     )
     await db.commit()
 
-    #  Optional email
     if user:
         background_tasks.add_task(
             send_cart_email,
             user,
-            type("Product", (), {"name": "All items"})()  # dummy object
         )
 
     return {"message": "Cart cleared successfully"}
