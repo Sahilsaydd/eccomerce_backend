@@ -5,7 +5,7 @@ from app.deps.db import get_db
 from app.deps.auth import get_current_user, require_role
 
 from app.modules.order.crud import order_crud
-from app.modules.order.schemas.order_schemas import OrderStatusUpdate
+from app.modules.order.schemas.order_schemas import OrderCreate, OrderStatusUpdate
 
 #  Import email functions
 from app.utils.email import send_order_email, send_status_email
@@ -19,6 +19,7 @@ router = APIRouter(prefix="/orders", tags=["Orders"])
 @router.post("/checkout/{product_id}")
 async def checkout(
     product_id: int,
+    data:OrderCreate,
     background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
     user=Depends(get_current_user),
@@ -26,7 +27,7 @@ async def checkout(
     user_id = int(user["sub"])
 
     #  Create order
-    order = await order_crud.create_order(db, user_id, product_id)
+    order = await order_crud.create_order(db, user_id, product_id, data)
 
     #  Get full user object (needed for email)
     result = await db.execute(select(User).where(User.id == user_id))

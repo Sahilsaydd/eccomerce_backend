@@ -115,31 +115,36 @@ You can continue shopping or proceed to checkout anytime.
     )
 
 async def send_order_email(user, order):
-    await send_email(
-        user.email,
-        "📦 Order Confirmed",
-        f"""
-Hi {user.name},
+    try:
+        # Extract required fields
+        order_id = order.id
+        order_date = order.created_at.strftime("%d-%m-%Y %I:%M %p")
+        status = order.status
 
-Thank you for your order! 🙌
+        await send_email(
+            user.email,
+            "🛒 Order Confirmed 🎉",
+            f"""
+Hi {user.name} 👋,
 
-Your order has been successfully placed and is now being processed.
+🎉 Your order has been placed successfully!
 
-🧾 Order ID: #{order.id}  
-📅 Order Date: {order.created_at}  
-📦 Status: {order.status}
+🧾 Order Details:
+━━━━━━━━━━━━━━━━━━━━━━
+🆔 Order ID   : #{order_id}
+📅 Order Date : {order_date}
+📦 Status     : {status}
+━━━━━━━━━━━━━━━━━━━━━━
 
-We’ll notify you once your order is shipped.
+🚚 We are processing your order and will update you soon.
 
-👉 You can track your order anytime from your account.
+💙 Thanks for shopping with us!
 
-If you have any questions, feel free to contact our support team.
-
-Thank you for shopping with us ❤️  
-Your Store Team
+- Your Team 🛍️
 """
-    )
-
+        )
+    except Exception as e:
+        print("Email Error:", e)    
 async def send_status_email(user, order):
     await send_email(
         user.email,
