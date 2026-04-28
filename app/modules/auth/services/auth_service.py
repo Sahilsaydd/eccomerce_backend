@@ -56,3 +56,12 @@ async def login_user(db:AsyncSession,data):
     )
     return {"access_token": token, "refresh_token": refresh_token}
 
+
+async def get_userdetails(db:AsyncSession ,user_id:int):
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    print("User Details:", user)
+    if not user:
+        raise HTTPException(status_code=404 , details="User Not Found")
+    return user
+
