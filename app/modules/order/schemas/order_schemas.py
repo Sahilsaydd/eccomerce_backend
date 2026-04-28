@@ -41,6 +41,7 @@ class OrderStatusUpdate(BaseModel):
 
 
 class OrderCreate(BaseModel):
+    
     name: str = Field(..., min_length=2, max_length=100, description="Name must be 2–100 characters")
     phone: str = Field(..., pattern=r"^\+?\d{10,15}$", description="Phone must be 10–15 digits, optional leading +")
     address: str = Field(..., min_length=5, max_length=255, description="Address must be 5–255 characters")
