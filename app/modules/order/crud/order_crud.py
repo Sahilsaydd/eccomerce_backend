@@ -89,19 +89,45 @@ async def get_orders(db, user_id):
 
     result = await db.execute(
         select(Order).where(Order.user_id == user_id, Order.is_active == True)
+        .order_by(Order.created_at.desc())
     )
     orders = result.scalars().all()
 
-    return [
-        {
+    enriched = []
+    for order in orders:
+        # Get first order item to show product info
+        items_result = await db.execute(
+            select(OrderItems).where(
+                OrderItems.order_id == order.id,
+                OrderItems.is_active == True
+            )
+        )
+        items = items_result.scalars().all()
+
+        first_product_name = None
+        first_quantity = None
+        if items:
+            prod_result = await db.execute(
+                select(Product).where(Product.id == items[0].product_id)
+            )
+            product = prod_result.scalars().first()
+            first_product_name = product.name if product else f"Product #{items[0].product_id}"
+            first_quantity = items[0].quantity
+
+        enriched.append({
             "order_id": order.id,
             "status": order.status,
-            "total_price": order.total_price,
+            "total_price": float(order.total_price) if order.total_price else 0.0,
             "created_at": order.created_at,
+            "name": order.name,
+            "phone": order.phone,
+            "address": order.address,
+            "product_name": first_product_name,
+            "quantity": first_quantity,
             "is_active": order.is_active
-        }
-        for order in orders
-    ]
+        })
+
+    return enriched
 
 
 async def get_order_details(db, order_id, user_id):
