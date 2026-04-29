@@ -82,6 +82,7 @@ async def login(
     background_tasks.add_task(send_login_email, user)
 
     return {
+        "Role": user.role,
         "message": f"{user.name} Logged in successfully",
         "access_token": token_data["access_token"],
         "refresh_token": token_data["refresh_token"],
@@ -123,7 +124,7 @@ async def logout(
         if user:
             background_tasks.add_task(send_logout_email, user)
 
-        return {"message": "Logged out successfully"}
+        return {"Role": user.role, "message": "Logged out successfully"}
 
     except Exception as e:
         raise HTTPException(status_code=401, detail="Invalid token")

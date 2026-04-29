@@ -198,15 +198,17 @@ async def update_product(db: AsyncSession, product_id: int, data):
 
 
 
-async def delete_product(db: AsyncSession, product_id: int):
+async def delete_product(db: AsyncSession, product_id: int, redis):
     product = await get_product_by_id_raw(db, product_id)
 
     product.is_active = False
 
     await db.commit()
     await db.refresh(product)
-
+      # ✅ REMOVE CACHE (CRITICAL FIX)
+    await redis.delete("products:all:v2")
     return {
+         "Product_id": product.id,
         "message": "Product deleted successfully",
         "is_active": product.is_active
     }

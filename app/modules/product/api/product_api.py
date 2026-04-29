@@ -47,7 +47,7 @@ async def delete_all(db:AsyncSession =Depends(get_db),user=Depends(require_role(
 
 
 @router.delete("/{product_id}")
-async def delete(product_id:int, db:AsyncSession =Depends(get_db), user=Depends(require_role(["admin"]))):
-    return await product_crud.delete_product(db, product_id)
+async def delete(product_id:int, db:AsyncSession =Depends(get_db), user=Depends(require_role(["admin"])) ,redis=Depends(get_redis)):
+    return await product_crud.delete_product(db, product_id, redis)
 
 

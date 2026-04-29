@@ -54,7 +54,7 @@ async def login_user(db:AsyncSession,data):
         user.email,
         ex = 7 * 24*60*60
     )
-    return {"access_token": token, "refresh_token": refresh_token}
+    return {"access_token": token, "refresh_token": refresh_token , "role": user.role   }
 
 
 async def get_userdetails(db:AsyncSession ,user_id:int):
