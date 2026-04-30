@@ -9,6 +9,10 @@ from app.deps.auth  import require_role
 router = APIRouter(prefix="/products",tags=["Products"])
 
 
+#Get Paginated Products (Public)
+@router.get("/paginated",response_model=PaginatedProductResponse)
+async def get_paginated(page:int = Query(1, ge=1), per_page:int = Query(10, ge=1), db:AsyncSession =Depends(get_db) ):
+      return await product_crud.get_products_paginated(db,page,per_page)
 
 @router.get("/search/")
 async def search(keyword:str =Query(None),category:str=Query(None), db:AsyncSession =Depends(get_db)):
@@ -26,10 +30,8 @@ async def get_one(product_id:int , db:AsyncSession =Depends(get_db)):
 async def get_all(db:AsyncSession =Depends(get_db), redis=Depends(get_redis)):
     return await product_crud.get_products(db, redis)
 
-#Get Paginated Products (Public)
-@router.get("/paginated/",response_model=PaginatedProductResponse)
-async def get_paginated(page:int = Query(1, ge=1), per_page:int = Query(10, ge=1), db:AsyncSession =Depends(get_db) ):
-    return await product_crud.get_products_paginated(db,page,per_page)
+
+  
 
 @router.post("/",response_model=ProductResponse)
 async def create(data:ProductCreate ,db:AsyncSession =Depends(get_db), user= Depends(require_role(["admin"]))):

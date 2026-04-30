@@ -84,37 +84,6 @@ async def get_products(db: AsyncSession, redis):
 
 
 
-
-async def get_product_by_id(db: AsyncSession, product_id: int):
-    result = await db.execute(
-        select(Product).where(Product.id == product_id)
-    )
-    p = result.scalar_one_or_none()
-
-    if not p:
-        raise HTTPException(status_code=404, detail="Product Not Found")
-
-    final_price = calculate_final_price(p.price, p.discount_percentage)
-
-    return {
-        "id": p.id,
-        "name": p.name,
-        "price": p.price,
-        "final_price": final_price,
-        "you_saved": round(p.price - final_price, 2),
-        "description": p.description,
-        "category": p.category,
-        "rating": p.rating,
-        "product_img": p.product_img,
-        "stock": p.stock,
-        "brand": p.brand,
-        "discount_percentage": p.discount_percentage,
-        "product_images": p.product_images
-    }
-
-
-
-
 async def get_products_paginated(db: AsyncSession, page: int = 1, per_page: int = 10):
 
     total_products = await db.execute(
@@ -167,6 +136,73 @@ async def get_products_paginated(db: AsyncSession, page: int = 1, per_page: int 
 
 
 
+async def get_product_by_id(db: AsyncSession, product_id: int):
+    result = await db.execute(
+        select(Product).where(Product.id == product_id)
+    )
+    p = result.scalar_one_or_none()
+
+    if not p:
+        raise HTTPException(status_code=404, detail="Product Not Found")
+
+    final_price = calculate_final_price(p.price, p.discount_percentage)
+
+    return {
+        "id": p.id,
+        "name": p.name,
+        "price": p.price,
+        "final_price": final_price,
+        "you_saved": round(p.price - final_price, 2),
+        "description": p.description,
+        "category": p.category,
+        "rating": p.rating,
+        "product_img": p.product_img,
+        "stock": p.stock,
+        "brand": p.brand,
+        "discount_percentage": p.discount_percentage,
+        "product_images": p.product_images
+    }
+
+
+
+async def search_products(db: AsyncSession, keyword: str = None, category: str = None):
+    query = select(Product).where(Product.is_active == True)
+
+    if keyword:
+        query = query.where(Product.name.ilike(f"%{keyword}%"))
+
+    if category:
+        query = query.where(Product.category.ilike(f"%{category}%"))
+
+    result = await db.execute(query)
+    products = result.scalars().all()
+
+    data = []
+    for p in products:
+        final_price = calculate_final_price(p.price, p.discount_percentage)
+
+        data.append({
+            "id": p.id,
+            "name": p.name,
+            "price": p.price,
+            "final_price": final_price,
+            "you_saved": round(p.price - final_price, 2),
+            "description": p.description,
+            "category": p.category,
+            "rating": p.rating,
+            "product_img": p.product_img,
+            "stock": p.stock,
+            "brand": p.brand,
+            "discount_percentage": p.discount_percentage,
+            "product_images": p.product_images
+        })
+
+    return data
+
+
+
+
+
 
 async def update_product(db: AsyncSession, product_id: int, data):
     product = await get_product_by_id_raw(db, product_id)
@@ -213,42 +249,6 @@ async def delete_product(db: AsyncSession, product_id: int, redis):
         "is_active": product.is_active
     }
 
-
-
-
-async def search_products(db: AsyncSession, keyword: str = None, category: str = None):
-    query = select(Product).where(Product.is_active == True)
-
-    if keyword:
-        query = query.where(Product.name.ilike(f"%{keyword}%"))
-
-    if category:
-        query = query.where(Product.category.ilike(f"%{category}%"))
-
-    result = await db.execute(query)
-    products = result.scalars().all()
-
-    data = []
-    for p in products:
-        final_price = calculate_final_price(p.price, p.discount_percentage)
-
-        data.append({
-            "id": p.id,
-            "name": p.name,
-            "price": p.price,
-            "final_price": final_price,
-            "you_saved": round(p.price - final_price, 2),
-            "description": p.description,
-            "category": p.category,
-            "rating": p.rating,
-            "product_img": p.product_img,
-            "stock": p.stock,
-            "brand": p.brand,
-            "discount_percentage": p.discount_percentage,
-            "product_images": p.product_images
-        })
-
-    return data
 
 
 
