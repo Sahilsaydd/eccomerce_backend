@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from app.modules.auth.api import auth_api
 from app.modules.admin.api import admin_api
 from app.db.database import engine
@@ -8,6 +9,7 @@ from app.db.database import Base
 from app.modules.product.api import product_api
 from app.modules.cart.api import cart_api
 from app.modules.order.api import order_api
+import os
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
@@ -35,3 +37,6 @@ app.include_router(admin_api.router)
 app.include_router(product_api.router)
 app.include_router(cart_api.router)
 app.include_router(order_api.router)
+os.makedirs("uploads/products", exist_ok=True)
+
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
