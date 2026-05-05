@@ -87,7 +87,7 @@ async def get_products_paginated(db: AsyncSession, page: int = 1, per_page: int 
     result = await db.execute(
         select(Product)
         .where(Product.is_active == True)
-        .order_by(Product.id)
+        .order_by(Product.created_at.desc())
         .offset(offset)
         .limit(per_page)
     )

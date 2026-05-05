@@ -6,6 +6,7 @@ from app.modules.cart.model.cart_model import Cart
 from app.modules.cart.model.cart_item_model import CartItem
 from app.modules.product.model.product_model import Product
 from app.modules.user.model.user import User
+from sqlalchemy.orm import selectinload
 
 from app.utils.email import send_order_email, send_status_email
 
@@ -85,17 +86,22 @@ async def create_order(db, user_id, product_id, data):
     }
 
 
-async def get_orders(db, user_id):
 
-    result = await db.execute(
-        select(Order).where(Order.user_id == user_id, Order.is_active == True)
-        .order_by(Order.created_at.desc())
-    )
+async def get_orders(db, user_id=None, is_admin=False):
+
+    query = select(Order).where(Order.is_active == True)
+
+    if not is_admin:
+        query = query.where(Order.user_id == user_id)
+
+    query = query.order_by(Order.created_at.desc())
+
+    result = await db.execute(query)
     orders = result.scalars().all()
 
     enriched = []
+
     for order in orders:
-        # Get first order item to show product info
         items_result = await db.execute(
             select(OrderItems).where(
                 OrderItems.order_id == order.id,
@@ -104,26 +110,35 @@ async def get_orders(db, user_id):
         )
         items = items_result.scalars().all()
 
-        first_product_name = None
-        first_quantity = None
-        if items:
+        item_list = []
+
+        for item in items:
             prod_result = await db.execute(
-                select(Product).where(Product.id == items[0].product_id)
+                select(Product).where(Product.id == item.product_id)
             )
             product = prod_result.scalars().first()
-            first_product_name = product.name if product else f"Product #{items[0].product_id}"
-            first_quantity = items[0].quantity
+
+            item_list.append({
+                "quantity": item.quantity,
+                "price": float(item.price),
+                "product": {
+                    "id": product.id if product else None,
+                    "name": product.name if product else "Unknown",
+                    "image": product.product_img if product else None,
+                    "price": float(product.price) if product else 0
+                }
+            })
 
         enriched.append({
-            "order_id": order.id,
+            "id": order.id,
+            "user_id": order.user_id,
             "status": order.status,
-            "total_price": float(order.total_price) if order.total_price else 0.0,
+            "total_price": float(order.total_price or 0),
             "created_at": order.created_at,
             "name": order.name,
             "phone": order.phone,
             "address": order.address,
-            "product_name": first_product_name,
-            "quantity": first_quantity,
+            "items": item_list,
             "is_active": order.is_active
         })
 
@@ -211,5 +226,51 @@ async def update_order_status(db, order_id, status):
         "order_id": order.id,
         "status": order.status,
         "total_price": order.total_price,
+        "is_active": order.is_active
+    }
+
+
+async def delete_order(db, user_id, order_id):
+
+    result = await db.execute(
+        select(Order).where(
+            Order.id == order_id,
+            Order.user_id == user_id,
+            Order.is_active == True
+        )
+    )
+    order = result.scalars().first()
+
+    if not order:
+        raise HTTPException(status_code=404, detail="Order Not Found")
+
+    
+    if order.status.lower() == "delivered":
+        raise HTTPException(
+            status_code=400,
+            detail="Delivered orders cannot be deleted"
+        )
+
+  
+    order.is_active = False
+
+   
+    result = await db.execute(
+        select(OrderItems).where(
+            OrderItems.order_id == order.id,
+            OrderItems.is_active == True
+        )
+    )
+    items = result.scalars().all()
+
+    for item in items:
+        item.is_active = False
+
+    await db.commit()
+    await db.refresh(order) 
+
+    return {
+        "message": "Order deleted successfully",
+        "order_id": order.id,
         "is_active": order.is_active
     }
