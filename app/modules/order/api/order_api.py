@@ -88,3 +88,8 @@ async def update_status(
 async def delete_order(order_id:int ,db:AsyncSession = Depends(get_db),user=Depends(get_current_user)):
     user_id = int(user["sub"])
     return await order_crud.delete_order(db ,user_id,order_id)
+
+@router.put("/cancel/{order_id}")
+async def cancel_order(order_id:int ,db:AsyncSession = Depends(get_db),user=Depends(get_current_user)):
+    user_id = int(user["sub"])
+    return await order_crud.cancel_order(order_id, db, user_id)

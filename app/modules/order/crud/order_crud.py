@@ -232,6 +232,7 @@ async def update_order_status(db, order_id, status):
 
 async def delete_order(db, user_id, order_id):
 
+
     result = await db.execute(
         select(Order).where(
             Order.id == order_id,
@@ -274,3 +275,27 @@ async def delete_order(db, user_id, order_id):
         "order_id": order.id,
         "is_active": order.is_active
     }
+
+
+
+async def cancel_order(order_id , db, user_id):
+    result = await db.execute(select(Order).where(Order.id == order_id,Order.user_id == user_id,Order.is_active == True))
+    order = result.scalars().first()
+
+    if not order:
+        raise HTTPException(status_code=404, detail="Order Not Found")
+    
+    if order.status.lower() in ['cancelled', 'delivered']:
+        raise HTTPException(
+            status_code=400,
+            detail="Cancelled or delivered orders cannot be cancelled"
+        )
+    order.status = "cancelled"
+    await db.commit()
+    await db.refresh(order)
+    return {
+        "message": "Order cancelled successfully",
+        "order_id": order.id,
+        "status": order.status
+    }
+    
