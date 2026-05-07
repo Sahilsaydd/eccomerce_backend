@@ -9,6 +9,7 @@ from app.db.database import Base
 from app.modules.product.api import product_api
 from app.modules.cart.api import cart_api
 from app.modules.order.api import order_api
+from app.modules.user.api import userApi
 import os
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -33,6 +34,7 @@ app.add_middleware(
 )
 
 app.include_router(auth_api.router)
+app.include_router(userApi.router)
 app.include_router(admin_api.router)
 app.include_router(product_api.router)
 app.include_router(cart_api.router)

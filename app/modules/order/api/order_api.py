@@ -15,6 +15,14 @@ from sqlalchemy.future import select
 router = APIRouter(prefix="/orders", tags=["Orders"])
 
 
+@router.get("/admin/stats")
+async def get_admin_stats(
+    db: AsyncSession = Depends(get_db),
+    user=Depends(require_role(["admin"]))
+):
+    return await order_crud.get_admin_dashboard_stats(db)
+
+
 @router.post("/checkout/{product_id}")
 async def checkout(
     product_id: int,
@@ -56,7 +64,9 @@ async def get_order_details(
     user=Depends(get_current_user)
 ):
     user_id = int(user["sub"])
-    return await order_crud.get_order_details(db, order_id, user_id)
+    role = user.get("role")
+    is_admin = role == "admin"
+    return await order_crud.get_order_details(db, order_id, user_id, is_admin)
 
 
 @router.put("/status/{order_id}")

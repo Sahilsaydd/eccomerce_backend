@@ -107,7 +107,12 @@ async def get_cart(db, user_id):
         if not item.product or item.product.is_active == False:
             continue
 
-        item_total = item.quantity * item.product.price
+        # Calculate Discounted Price
+        discounted_price = item.product.price
+        if item.product.discount_percentage > 0:
+            discounted_price = item.product.price * (1 - item.product.discount_percentage / 100)
+
+        item_total = item.quantity * discounted_price
         total_price += item_total
 
         response_items.append({
@@ -117,6 +122,8 @@ async def get_cart(db, user_id):
                 "id": item.product.id,
                 "name": item.product.name,
                 "price": item.product.price,
+                "discount_price": round(discounted_price, 2),
+                "discount_percentage": item.product.discount_percentage,
                 "category": item.product.category,
                 "image": item.product.product_img,
                 "description": item.product.description,
