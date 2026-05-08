@@ -27,12 +27,14 @@ origins = [
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # 🔥 for development (allow all)
+    allow_origins=[
+        "http://localhost:4200",
+        "https://shopsphere-angular.vercel.app",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
 app.include_router(auth_api.router)
 app.include_router(userApi.router)
 app.include_router(admin_api.router)
